@@ -66,7 +66,6 @@ app.put('/api/products/:id', (req, res) => {
             return res.status(500).send(err.message);
 
         let products = JSON.parse(data);
-        console.log()
         let product = products.find(p => p.id === parseInt(req.params.id))
         if(!product)
             return res.status(404).send("Product not found");
