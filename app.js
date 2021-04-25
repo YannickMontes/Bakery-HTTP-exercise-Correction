@@ -102,4 +102,5 @@ app.delete('/api/products/:id', (req, res) => {
     });
 });
 
-app.listen(3000, () => 'Listening on port 3000...');
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => `Listening on http://localhost:${PORT} ...`);
