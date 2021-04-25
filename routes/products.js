@@ -1,109 +1,86 @@
 const express = require('express');
-const fs = require('fs');
 const format = require('../joi_request_format');
-
-const DATABASE = './data/products.json';
-
+const Product = require('../models/Product');
 const router = express.Router();
 
-router.get('/', (req, res) =>{
-    fs.readFile(DATABASE, (err, data) => {
-        if(err)
-            return res.status(500).send(err.message);
-
-        res.status(200).send(JSON.parse(data));
-    });
+router.get('/', async (req, res) => {
+    try{
+        const products = await Product.find();
+        res.status(200).json(products);
+    }
+    catch(error)
+    {
+        res.status(500).json({message:error})
+    }
 });
 
-router.get('/', (req, res) => {
-    fs.readFile(DATABASE, (err, data) => {
-        if(err)
-            return res.status(500).send(err.message);
-
-        res.status(200).send(JSON.parse(data));
-    });
+router.get('/:id', async (req, res) => {
+    try{
+        const product = await Product.findById(req.params.id);
+        if(product === null)
+        {
+            return res.status(404).json({message:'Id not found.'});
+        }
+        res.status(200).json(product);
+    }
+    catch(error)
+    {
+        res.status(500).json({message:error})
+    }
 });
 
-router.get('/:id', (req, res) => {
-    fs.readFile(DATABASE, (err, data) => {
-        if(err)
-            return res.status(500).send(err.message);
-
-        let products = JSON.parse(data);
-        let product = products.find(p => p.id === parseInt(req.params.id))
-        if(!product)
-            return res.status(400).send("Product not found");
-        res.status(200).send(product);
-    });
-});
-
-
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
     const isBodyCorrect = format.postBodyFormat.validate(req.body);
     if(isBodyCorrect.error)
-        return res.status(400).send(isBodyCorrect.error.details[0].message);
+        return res.status(400).json({message: isBodyCorrect.error.details[0].message});
 
-    fs.readFile(DATABASE, (err, data) => {
-        if(err)
-            return res.status(500).send(err.message);
-
-        let products = JSON.parse(data);
-        let product = {"id": products.length +1, name:req.body.name, price: req.body.price};
-        products.push(product);
-        fs.writeFile(DATABASE, JSON.stringify(products), (err) => {
-            if(err)
-                return res.status(500).send(err.message);
-            res.send(product);
-        });
+    const product = new Product({
+        name: req.body.name,
+        description: req.body.description,
+        price: req.body.price
     });
+    try
+    {
+        const savedProduct = await product.save();
+        res.status(200).json(savedProduct);
+    }
+    catch(error)
+    {
+        res.status(500).json({message: error});
+    }
 });
 
-router.put('/:id', (req, res) => {
-    if(!req.params.id)
-        return res.status(400).send("Incorrect id");
-    const bodyCorrect = format.putBodyFormat.validate(req.body);
-    if(bodyCorrect.error)
-        return res.status(400).send(bodyCorrect.error.details[0].message);
-
-    fs.readFile(DATABASE, (err, data) => {
-        if(err)
-            return res.status(500).send(err.message);
-
-        let products = JSON.parse(data);
-        let product = products.find(p => p.id === parseInt(req.params.id))
-        if(!product)
-            return res.status(404).send("Product not found");
-
-        let index = products.indexOf(product);
-        if(req.body.name)
-            product['name'] = req.body.name;
-        if(req.body.price)
-            product['price'] = req.body.price;
-        products[index] = product;
-        fs.writeFile(DATABASE, JSON.stringify(products), (err) => {
-            if(err)
-                return res.status(500).send(err.message);
-            res.send(product);
-        });
-    });
+router.put('/:id', async (req, res) => {
+    try
+    {
+        let update = {name:req.body.name, price:req.body.price};
+        const product = await Product.findByIdAndUpdate(req.params.id, update);
+        if(product === null)
+        {
+            return res.status(404).json({message:'Id not found.'});
+        }
+        res.status(200).json(product);
+    }
+    catch(error)
+    {
+        res.status(500).json({message: error});
+    }
 });
 
-router.delete('/:id', (req, res) => {
-    fs.readFile(DATABASE, (err, data) => {
-        if(err)
-            res.send(err.message);
-        let products = JSON.parse(data);
-        let product = products.find(p => p.id === parseInt(req.params.id));
-        if(!product)
-            return res.status(404).send("Product not found");
-        let index = products.indexOf(product);
-        products.splice(index, 1);
-        fs.writeFile(DATABASE, JSON.stringify(products), (err) => {
-            if(err)
-                return res.status(500).send(err.message);
-            res.send(product);
-        });
-    });
+router.delete('/:id', async (req, res) => {
+    try
+    {
+        const product = await Product.findByIdAndDelete(req.params.id);
+        if(product === null)
+        {
+            return res.status(404).json({message:'Id not found.'});
+        }
+        res.status(200).json(product);
+    }
+    catch(error)
+    {
+        res.status(500).json({message: error});
+    }
 });
 
 module.exports = router;
