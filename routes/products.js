@@ -48,7 +48,14 @@ router.post('/', (req, res) => {
             return res.status(500).send(err.message);
 
         let products = JSON.parse(data);
-        let product = {"id": products.length +1, name:req.body.name, price: req.body.price};
+        let id = -1;
+        products.forEach(element => {
+            if(element.id > id)
+            {
+                id = element.id;
+            }
+        });
+        let product = {"id": id + 1, name:req.body.name, price: req.body.price};
         products.push(product);
         fs.writeFile(DATABASE, JSON.stringify(products), (err) => {
             if(err)
