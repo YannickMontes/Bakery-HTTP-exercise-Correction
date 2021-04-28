@@ -7,7 +7,9 @@ app.use(express.json());
 
 //Import routes
 const productsRoutes = require('./routes/productsRoutes');
+const userRoutes = require('./routes/userRoutes');
 app.use('/api/products', productsRoutes);
+app.use('/api/auth', userRoutes);
 
 app.get('/', (req, res) => {
     res.send("Welcome to the bakery.");
