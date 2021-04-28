@@ -6,19 +6,20 @@ const app = express();
 app.use(express.json());
 
 //Import routes
-const productsRoutes = require('./routes/products');
+const productsRoutes = require('./routes/productsRoutes');
 app.use('/api/products', productsRoutes);
-
 
 app.get('/', (req, res) => {
     res.send("Welcome to the bakery.");
 });
 
+mongoose.set('useFindAndModify', false);
 //Connect to DB
 mongoose.connect(
     process.env.DB_ADDRESS,
-    { useNewUrlParser : true},
-    () => console.log('Connected !'));
+    { useNewUrlParser : true , useUnifiedTopology: true})
+    .then(() => console.log("Connected"))
+    .catch(error => console.log(error));
 
 
 const PORT = process.env.PORT || 3000;

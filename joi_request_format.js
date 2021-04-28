@@ -8,8 +8,9 @@ const postBodyFormat = joi.object({
 
 const putBodyFormat = joi.object({
     name: joi.string().min(3).max(30),
+    description: joi.string().min(0).max(200),
     price: joi.number().min(0)
-}).or('name', 'price');
+}).or('name', 'description', 'price');
 
 
 module.exports.joi = joi;
