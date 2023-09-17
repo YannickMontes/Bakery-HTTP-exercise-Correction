@@ -1,75 +1,67 @@
-const Product = require('../models/Product');
 const format = require('../joi_request_format');
 
-function createProduct(req, res)
+async function createProduct(req, res)
 {
 	const isBodyCorrect = format.postBodyFormat.validate(req.body);
 	if(isBodyCorrect.error)
-		return res.status(400).json({message: isBodyCorrect.error.details[0].message});
+		return res.status(400).json({error: isBodyCorrect.error.details[0].message});
 
-	const product = new Product({
-		name: req.body.name,
-		description: req.body.description,
-		price: req.body.price
-	});
-	product.save()
-		.then(() => res.status(200).json(product))
-		.catch(error => res.status(500).json({error: error}));
+	let {product, error} = await req.app.database.createProduct(req.body.name, req.body.description, req.body.price);
+	if(error)
+		return res.status(500).json({error});
+	else
+		return res.status(200).json({product});
 }
 
-function getAllProducts(req, res)
+async function getAllProducts(req, res)
 {
-	Product.find()
-		.then(products => res.status(200).json(products))
-		.catch(error => res.status(500).json({error: error}));
+	let {products, error } = await req.app.database.getAllProducts();
+	if(error)
+		return res.status(500).json({error});
+	else
+		return res.status(200).json({products});
 }
 
-function getProductById(req, res)
+async function getProductById(req, res)
 {
-	Product.findById(req.params.id)
-		.then(product => {
-			if(product === null)
-				return res.status(404).json({error: "Id not found"});
-			res.status(200).json(product)
-		})
-		.catch(error => res.status(500).json({error: error}));
-};
+	let { product, error } = await req.app.database.getProduct(req.params.id);
+	if(error)
+		return res.status(500).json({error});
+	else if(product)
+		return res.status(200).json({product});
+	else 
+		return res.status(404).json({error: "Product not found."});
+}
 
-function modifyProduct(req, res)
+async function modifyProduct(req, res)
 {
 	const isBodyCorrect = format.putBodyFormat.validate(req.body);
 	if(isBodyCorrect.error)
-		return res.status(400).json({message: isBodyCorrect.error.details[0].message});
+		return res.status(400).json({error: isBodyCorrect.error.details[0].message});
 
-	let update = {};
-	if(req.body.name != null)
-		update.name = req.body.name;
-	if(req.body.description != null)
-		update.description = req.body.description;
-	if(req.body.price != null)
-		update.price = req.body.price;
-	Product.findByIdAndUpdate(req.params.id, update, {new: true})
-		.then(product => {
-			if(product === null)
-				return res.status(404).json({error: "Id not found"});
-			res.status(200).json(product)
-		})
-		.catch(error => res.status(500).json({error: error}));
+	let { product, error} = await req.app.database.modifyProduct(req.params.id, req.body);
+	if(error)
+		return res.status(500).json({error});
+	else if(product)
+		return res.status(200).json({product});
+	else 
+		return res.status(404).json({error: "Product not found."});
 }
 
-function deleteProduct(req, res)
+async function deleteProduct(req, res)
 {
-	Product.findByIdAndDelete(req.params.id)
-		.then(product => {
-			if(product === null)
-				return res.status(404).json({error: "Id not found"});
-			res.status(200).json(product)
-		})
-		.catch(error => res.status(500).json({error: error}));
+	let {product, error} = await req.app.database.deleteProduct(req.params.id);
+	if(error)
+		return res.status(500).json({error});
+	else
+		return res.status(200).json({product});
 }
 
-module.exports = {getAllProducts: getAllProducts,
-					getProductById:getProductById,
-					createProduct: createProduct,
-					modifyProduct : modifyProduct,
-					deleteProduct: deleteProduct};
+module.exports = 
+{
+	getAllProducts,
+	getProductById,
+	createProduct,
+	modifyProduct,
+	deleteProduct
+};

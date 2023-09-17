@@ -1,43 +1,68 @@
 const bcrypt = require('bcrypt');
-const User = require('../models/User');
 const jwt = require('jsonwebtoken');
+const format = require('../joi_request_format');
+require("dotenv").config();
 
-function signup(req, res)
+async function signup(req, res)
 {
-	bcrypt.hash(req.body.password, 5)
-		.then(hash => {
-			const user = new User({
-				email: req.body.email,
-				password: hash
-			});
-			user.save()
-				.then((savedUser) => res.status(200).json(savedUser))
-				.catch(error => res.status(500).json({ error: error }));
-		})
-		.catch(error => res.status(500).json({ error:error }));
+	const isBodyCorrect = format.userBodyFormat.validate(req.body);
+	if(isBodyCorrect.error)
+		return res.status(400).json({error: isBodyCorrect.error.details[0].message});
+
+	let {user, error} = await req.app.database.getUser(req.body.email);
+
+	if(user && user.email)
+		return res.status(401).json({error: "Email is already existing in database."});
+
+	if(error)
+		return res.status(500).json({error});
+
+	try
+	{
+		let hash = await bcrypt.hash(req.body.password, 5);
+		let {user, error} = await req.app.database.createUser(req.body.email, hash);
+		if(error)
+			return res.status(500).json({error})
+		return res.status(200).json({user});
+	}
+	catch(error)
+	{
+		return res.status(500).json({error});
+	}
 }
 
-function login(req, res)
+async function login(req, res)
 {
-	User.findOne({ email: req.body.email })
-		.then(user => {
-			if (user === null) 
-			{
-				return res.status(404).json({ error: 'User not found !' });
-			}
-			bcrypt.compare(req.body.password, user.password)
-				.then(valid => {
-					if (!valid) 
-					{
-						return res.status(401).json({ error: 'Wrong password !' });
-					}
-					const token = jwt.sign({userId: user._id}, 'secret_key', {expiresIn: "1h"});
-					res.status(200).json({userId: user._id, token: token});
-				})
-			.catch(error => res.status(500).json({ error }));
-		})
-		.catch(error => res.status(500).json({ error }));
+	const isBodyCorrect = format.userBodyFormat.validate(req.body);
+	if(isBodyCorrect.error)
+		return res.status(400).json({error: isBodyCorrect.error.details[0].message});
+
+	let {user, error} = await req.app.database.getUser(req.body.email);
+
+	if(error)
+		return res.status(500).json({error});
+
+	if(!user || !user.email)
+		return res.status(404).json({error: "User not found."});
+
+	try
+	{
+		let pwdCorrect = await bcrypt.compare(req.body.password, user.password);
+
+		if(!pwdCorrect)
+			return res.status(400).json({error: "Incorrect password."});
+
+		const token = jwt.sign({userId: user._id}, process.env.SECRET_KEY, {expiresIn: process.env.TOKEN_EXP});
+		res.status(200).json({userId: user._id, token: token});
+	}
+	catch(error)
+	{
+		return res.status(500).json({error});
+	}
 }
 
-module.exports = {signup: signup, 
-					login: login};
+module.exports = 
+{
+	signup: signup, 
+	login: login
+};
